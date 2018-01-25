@@ -56,7 +56,6 @@ import android.text.format.DateUtils;
 import com.google.common.base.Charsets;
 import com.google.common.base.Strings;
 
-import de.schildbach.wallet.data.ExchangeRate;
 import de.schildbach.wallet.util.GenericUtils;
 import de.schildbach.wallet.util.Io;
 
@@ -102,7 +101,7 @@ public class ExchangeRatesProvider extends ContentProvider
 	private String userAgent;
 
 	@Nullable
-	private Map<String, de.schildbach.wallet.data.ExchangeRate> exchangeRates = null;
+	private Map<String, ExchangeRate> exchangeRates = null;
 	private long lastUpdated = 0;
 
 	private static final URL BITCOINAVERAGE_URL;
@@ -140,10 +139,10 @@ public class ExchangeRatesProvider extends ContentProvider
 
 		this.userAgent = WalletApplication.httpUserAgent(WalletApplication.packageInfoFromContext(context).versionName);
 
-		final de.schildbach.wallet.data.ExchangeRate cachedExchangeRate = config.getCachedExchangeRate();
+		final ExchangeRate cachedExchangeRate = config.getCachedExchangeRate();
 		if (cachedExchangeRate != null)
 		{
-			exchangeRates = new TreeMap<String, de.schildbach.wallet.data.ExchangeRate>();
+			exchangeRates = new TreeMap<String, ExchangeRate>();
 			exchangeRates.put(cachedExchangeRate.getCurrencyCode(), cachedExchangeRate);
 		}
 
@@ -167,7 +166,7 @@ public class ExchangeRatesProvider extends ContentProvider
 
 		if (!offline && (lastUpdated == 0 || now - lastUpdated > UPDATE_FREQ_MS))
 		{
-			Map<String, de.schildbach.wallet.data.ExchangeRate> newExchangeRates = null;
+			Map<String, ExchangeRate> newExchangeRates = null;
 			if (newExchangeRates == null)
 				newExchangeRates = requestExchangeRates(BITCOINAVERAGE_URL, userAgent, BITCOINAVERAGE_SOURCE, BITCOINAVERAGE_FIELDS);
 			if (newExchangeRates == null)
@@ -178,7 +177,7 @@ public class ExchangeRatesProvider extends ContentProvider
 				exchangeRates = newExchangeRates;
 				lastUpdated = now;
 
-				final de.schildbach.wallet.data.ExchangeRate exchangeRateToCache = bestExchangeRate(config.getExchangeCurrencyCode());
+				final ExchangeRate exchangeRateToCache = bestExchangeRate(config.getExchangeCurrencyCode());
 				if (exchangeRateToCache != null)
 					config.setCachedExchangeRate(exchangeRateToCache);
 			}
@@ -191,9 +190,9 @@ public class ExchangeRatesProvider extends ContentProvider
 
 		if (selection == null)
 		{
-			for (final Map.Entry<String, de.schildbach.wallet.data.ExchangeRate> entry : exchangeRates.entrySet())
+			for (final Map.Entry<String, ExchangeRate> entry : exchangeRates.entrySet())
 			{
-				final de.schildbach.wallet.data.ExchangeRate exchangeRate = entry.getValue();
+				final ExchangeRate exchangeRate = entry.getValue();
 				final org.bitcoinj.utils.ExchangeRate rate = exchangeRate.rate;
 				final String currencyCode = exchangeRate.getCurrencyCode();
 				cursor.newRow().add(currencyCode.hashCode()).add(currencyCode).add(rate.coin.value).add(rate.fiat.value).add(exchangeRate.source);
@@ -202,9 +201,9 @@ public class ExchangeRatesProvider extends ContentProvider
 		else if (selection.equals(QUERY_PARAM_Q))
 		{
 			final String selectionArg = selectionArgs[0].toLowerCase(Locale.US);
-			for (final Map.Entry<String, de.schildbach.wallet.data.ExchangeRate> entry : exchangeRates.entrySet())
+			for (final Map.Entry<String, ExchangeRate> entry : exchangeRates.entrySet())
 			{
-				final de.schildbach.wallet.data.ExchangeRate exchangeRate = entry.getValue();
+				final ExchangeRate exchangeRate = entry.getValue();
 				final org.bitcoinj.utils.ExchangeRate rate = exchangeRate.rate;
 				final String currencyCode = exchangeRate.getCurrencyCode();
 				final String currencySymbol = GenericUtils.currencySymbol(currencyCode);
@@ -215,7 +214,7 @@ public class ExchangeRatesProvider extends ContentProvider
 		else if (selection.equals(KEY_CURRENCY_CODE))
 		{
 			final String selectionArg = selectionArgs[0];
-			final de.schildbach.wallet.data.ExchangeRate exchangeRate = bestExchangeRate(selectionArg);
+			final ExchangeRate exchangeRate = bestExchangeRate(selectionArg);
 			if (exchangeRate != null)
 			{
 				final org.bitcoinj.utils.ExchangeRate rate = exchangeRate.rate;
@@ -227,9 +226,9 @@ public class ExchangeRatesProvider extends ContentProvider
 		return cursor;
 	}
 
-	private de.schildbach.wallet.data.ExchangeRate bestExchangeRate(final String currencyCode)
+	private ExchangeRate bestExchangeRate(final String currencyCode)
 	{
-		de.schildbach.wallet.data.ExchangeRate rate = currencyCode != null ? exchangeRates.get(currencyCode) : null;
+		ExchangeRate rate = currencyCode != null ? exchangeRates.get(currencyCode) : null;
 		if (rate != null)
 			return rate;
 
@@ -288,7 +287,7 @@ public class ExchangeRatesProvider extends ContentProvider
 		throw new UnsupportedOperationException();
 	}
 
-	private static Map<String, de.schildbach.wallet.data.ExchangeRate> requestExchangeRates(final URL url, final String userAgent, final String source, final String... fields)
+	private static Map<String, ExchangeRate> requestExchangeRates(final URL url, final String userAgent, final String source, final String... fields)
 	{
 		final long start = System.currentTimeMillis();
 
@@ -319,7 +318,7 @@ public class ExchangeRatesProvider extends ContentProvider
 				final StringBuilder content = new StringBuilder();
 				final long length = Io.copy(reader, content);
 
-				final Map<String, de.schildbach.wallet.data.ExchangeRate> rates = new TreeMap<String, de.schildbach.wallet.data.ExchangeRate>();
+				final Map<String, ExchangeRate> rates = new TreeMap<String, ExchangeRate>();
 
 				final JSONObject head = new JSONObject(content.toString());
 				for (final Iterator<String> i = head.keys(); i.hasNext();)
@@ -342,7 +341,7 @@ public class ExchangeRatesProvider extends ContentProvider
 
 									if (rate.signum() > 0)
 									{
-										rates.put(currencyCode, new de.schildbach.wallet.data.ExchangeRate(new org.bitcoinj.utils.ExchangeRate(rate), source));
+										rates.put(currencyCode, new ExchangeRate(new org.bitcoinj.utils.ExchangeRate(rate), source));
 										break;
 									}
 								}
